@@ -1,15 +1,34 @@
 # opencode-tps-meter
 
-A TUI plugin for [OpenCode](https://opencode.ai) that shows a brief toast notification with the averaged tokens per second (TPS) at the end of each prompt/response cycle.
+A TUI plugin for [OpenCode](https://opencode.ai) that shows tokens per second (TPS) during and after each assistant response.
 
 ## What It Does
 
-After each assistant response finishes, a small notification appears showing the output TPS for that cycle — then disappears after 2 seconds.
+### Live Logging (during streaming)
+
+While the assistant generates tokens, TPS is logged every second to `~/.config/opencode/tps-meter.log`:
 
 ```
-┌──────────────────┐
-│   127.3 TPS      │
-└──────────────────┘
+[2026-04-04T12:34:56.789Z] live TPS: 127.3 TPS
+[2026-04-04T12:34:57.789Z] live TPS: 131.5 TPS
+[2026-04-04T12:34:58.789Z] live TPS: 129.8 TPS
+[2026-04-04T12:34:59.789Z] completed: Avg: 129.4 TPS | Peak: 145.2 TPS
+```
+
+Watch it live in a second terminal:
+
+```bash
+tail -f ~/.config/opencode/tps-meter.log
+```
+
+### Toast Notification (after completion)
+
+When the response finishes, a toast appears for 5 seconds showing both average and peak TPS:
+
+```
+┌──────────────────────────────────┐
+│   Avg: 129.4 TPS | Peak: 145.2 TPS │
+└──────────────────────────────────┘
 ```
 
 TPS is calculated as:
@@ -20,11 +39,11 @@ total output tokens across all assistant messages
     total active streaming time (seconds)
 ```
 
-Multiple assistant messages in a single cycle (e.g. with tool calls) are accumulated and averaged before display.
+Multiple assistant messages in a single cycle (e.g. with tool calls) are accumulated and averaged. Peak TPS is tracked from live streaming samples using a rolling 15-second window.
 
 ## Requirements
 
-- [OpenCode](https://opencode.ai) — any recent version
+- [OpenCode](https://opencode.ai) v1.3.13
 - [Bun](https://bun.sh) (OpenCode's runtime)
 
 ## Installation
@@ -67,21 +86,39 @@ Remove the plugin file and the entry from `tui.json`:
 
 ```bash
 rm ~/.config/opencode/plugins/tps-meter.js
+rm ~/.config/opencode/tps-meter.log
 ```
 
 Then remove the `plugin` line from `~/.config/opencode/tui.json`.
 
 ## How It Works
 
-The plugin hooks into two OpenCode TUI events:
+The plugin hooks into three OpenCode TUI events:
 
 | Event | Purpose |
 |-------|---------|
-| `session.status → busy` | Resets the accumulator for a new cycle |
+| `message.part.delta` | Tracks live streaming tokens for peak TPS estimation and logging |
 | `message.updated` | Accumulates output tokens and duration per completed assistant message |
-| `session.status → idle` | Calculates averaged TPS and shows the toast |
+| `session.status → idle` | Calculates average and peak TPS, shows the toast |
 
-Start time is taken from the parent user message's `time.created` timestamp for accuracy. End time is the assistant message's `time.completed` timestamp.
+**Live TPS** is estimated using byte-length token estimation (`Buffer.byteLength(delta, "utf8") / 4`) over a rolling 15-second window, matching the original implementation's approach.
+
+**Average TPS** uses real token counts from completed messages, measured from the parent user message's `time.created` to the assistant message's `time.completed`.
+
+**Peak TPS** is the highest live TPS observed during streaming.
+
+## Log File
+
+`~/.config/opencode/tps-meter.log` contains timestamped TPS entries:
+
+- `live TPS: 127.3 TPS` — logged every second during streaming
+- `completed: Avg: 129.4 TPS | Peak: 145.2 TPS` — logged once when response finishes
+
+The log file grows unbounded. Clear it manually when needed:
+
+```bash
+> ~/.config/opencode/tps-meter.log
+```
 
 ## Project-Scoped Installation
 
