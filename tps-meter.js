@@ -1,22 +1,13 @@
 /**
  * TPS Meter Plugin
  *
- * Shows a single toast with the averaged output TPS when the full
- * prompt/response cycle finishes (session goes idle).
- *
- * TPS is calculated as:
- *   total output tokens across all assistant messages in the cycle
- *   divided by
- *   total active streaming time (sum of per-message durations)
+ * Shows a toast with the exact output TPS when a response completes.
  */
 
 export default {
   id: "tps-meter",
 
   tui: async (api) => {
-    // Per-session accumulator: sessionID -> { tokens, durationMs, seen }
-    // Reset only after idle fires — never on busy, because message.updated
-    // events for a cycle can arrive before or after the busy event.
     const accumulators = new Map()
 
     function getAcc(sessionID) {
@@ -33,7 +24,6 @@ export default {
       return `${value.toFixed(2)} TPS`
     }
 
-    // Accumulate completed assistant messages
     api.event.on("message.updated", (evt) => {
       try {
         const message = evt.properties.info
@@ -63,7 +53,6 @@ export default {
       } catch (_) {}
     })
 
-    // Show toast when the full cycle ends, then reset
     api.event.on("session.status", (evt) => {
       try {
         const { sessionID, status } = evt.properties
@@ -77,7 +66,7 @@ export default {
         const formatted = formatTps(acc.tokens / (acc.durationMs / 1000))
         if (!formatted) return
 
-        api.ui.toast({ message: formatted, variant: "info", duration: 2000 })
+        api.ui.toast({ message: formatted, variant: "info", duration: 5000 })
       } catch (_) {}
     })
   },
