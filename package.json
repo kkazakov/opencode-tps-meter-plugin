@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "opencode-tps-meter",
+  "version": "1.0.0",
+  "description": "OpenCode TUI plugin that displays live TPS, average TPS, and peak TPS in the session prompt",
+  "type": "module",
+  "exports": {
+    "./tui": {
+      "import": "./tui.tsx"
+    }
+  },
+  "engines": {
+    "opencode": ">=1.3.14"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*",
+    "@opentui/core": "*",
+    "@opentui/solid": "*",
+    "solid-js": "*"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tps",
+    "tokens-per-second",
+    "performance"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kkazakov/opencode-tps-meter-plugin.git"
+  }
+}
